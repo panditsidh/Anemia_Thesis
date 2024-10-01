@@ -1,0 +1,66 @@
+{smcl}
+{com}{sf}{ul off}{txt}{.-}
+      name:  {res}<unnamed>
+       {txt}log:  {res}/Users/siddhantpandit/Desktop/Anemia/Anemia_Thesis/logs/Test_log.smcl
+  {txt}log type:  {res}smcl
+ {txt}opened on:  {res}28 Sep 2024, 17:19:53
+
+{com}. do "/var/folders/ml/nnf57h5n08qf8d46yh6824ph0000gn/T//SD87567.000000"
+{txt}
+{com}. bysort v000: tab anemic [aweight=wt] if v213==0 // not pregnant
+
+{txt}{hline}
+-> v000 = IA6
+
+     anemic {c |}      Freq.     Percent        Cum.
+{hline 12}{c +}{hline 35}
+          0 {c |}{res} 322,522.71       48.34       48.34
+{txt}          1 {c |}{res} 344,735.29       51.66      100.00
+{txt}{hline 12}{c +}{hline 35}
+      Total {c |}{res}    667,258      100.00
+
+{txt}{hline}
+-> v000 = IA7
+
+     anemic {c |}      Freq.     Percent        Cum.
+{hline 12}{c +}{hline 35}
+          0 {c |}{res} 280,193.82       40.27       40.27
+{txt}          1 {c |}{res} 415,513.18       59.73      100.00
+{txt}{hline 12}{c +}{hline 35}
+      Total {c |}{res}    695,707      100.00
+
+{txt}
+{com}. bysort v000: tab anemic [aweight=wt] if v213==1 // pregnant
+
+{txt}{hline}
+-> v000 = IA6
+
+     anemic {c |}      Freq.     Percent        Cum.
+{hline 12}{c +}{hline 35}
+          0 {c |}{res} 16,506.284       50.90       50.90
+{txt}          1 {c |}{res} 15,921.716       49.10      100.00
+{txt}{hline 12}{c +}{hline 35}
+      Total {c |}{res}     32,428      100.00
+
+{txt}{hline}
+-> v000 = IA7
+
+     anemic {c |}      Freq.     Percent        Cum.
+{hline 12}{c +}{hline 35}
+          0 {c |}{res} 12,929.325       45.51       45.51
+{txt}          1 {c |}{res} 15,478.675       54.49      100.00
+{txt}{hline 12}{c +}{hline 35}
+      Total {c |}{res}     28,408      100.00
+
+{txt}
+{com}. 
+{txt}end of do-file
+
+{com}. log close
+      {txt}name:  {res}<unnamed>
+       {txt}log:  {res}/Users/siddhantpandit/Desktop/Anemia/Anemia_Thesis/logs/Test_log.smcl
+  {txt}log type:  {res}smcl
+ {txt}closed on:  {res}28 Sep 2024, 17:20:13
+{txt}{.-}
+{smcl}
+{txt}{sf}{ul off}
