@@ -1,4 +1,10 @@
-*IMR stuff
+
+*************************************************************************
+* Prepare data
+*************************************************************************
+
+
+*IMR calculation
 
 use "/Users/siddhantpandit/Desktop/NFHS/nfhs5br.DTA", clear
 gen inperiod_birth = b3>1393
@@ -16,12 +22,7 @@ tempfile nfhs4_imr
 save nfhs4_district_imr.dta, replace
 
 
-
-
-
-
-
-* append 
+*Append nfhs-4 and 5 individual recode
 clear
 global data_dir "/Users/siddhantpandit/Desktop/NFHS"
 global repo_dir "/Users/siddhantpandit/Desktop/Anemia/Anemia_Thesis"
@@ -52,7 +53,7 @@ use caseid-v458 s116 sdistri using  "$nfhs4ir"
 append using `nfhs5'
 
 
-* weights
+*Calculate weights
 
 egen strata = group(v000 v024 v025) 
 egen psu = group(v000 v001 v024 v025)
@@ -64,9 +65,8 @@ drop v005 totalwt
 svyset psu [pweight = wt], strata(strata) 
 
 
-* match states
-gen state = .  // Initialize the new variable
-
+*Match states across surveys
+gen state = .  
 replace state = 28 if v024 == 1 & v000 == "IA6"
 replace state = 28 if v024 == 2 & v000 == "IA6"
 replace state = 12 if v024 == 3 & v000 == "IA6"
@@ -107,9 +107,8 @@ replace state = 36 if v024 == 36 & v000 == "IA6"
 replace state = v024 if v000=="IA7"
 
 
-*match districts 
+*Match districts across surveys 
 gen district = .
-
 replace district = 2000 if inlist(sdist,879,880) | inlist(sdistri,43) 
 replace district = 2001 if inlist(sdist,881,882) | inlist(sdistri,35)
 replace district = 2002 if inlist(sdist,865,866) | inlist(sdistri,81)
@@ -158,47 +157,45 @@ replace district = 2044 if inlist(sdist,889,895,899,910) | inlist(sdistri,538)
 replace district = 2045 if inlist(sdist,890,902) | inlist(sdistri,533)
 
 
-* variables
+*Generate variables
 
 gen hg = v456/10 if v455==0
 gen anemic = (v457!=4 & v457!=.)
 gen round5 = (v000=="IA7")
 gen bmi = v445
 
-* mean_anemia_ir.smcl (rates from 4 to 5 in individual recode)
-
-bysort v000: tab anemic [aweight=wt] if v213==0 // not pregnant
-bysort v000: tab anemic [aweight=wt] if v213==1 // pregnant
-
-
-* scatter graphs
-
-*states: state
-*wealth: v190
-*age: v013
-*education: v106
-*urban/rural: v102
-
-preserve
-gen candidate = state
-gen ones = 1
-// keep if v102==1 // rural only
-
-
-collapse (mean) hg (sum) ones [aweight=wt], by(candidate round5)
-reshape wide hg ones, i(candidate) j(round5)
-
-twoway (lfit hg0 hg0) (scatter hg1 hg0 [aweight=ones1],  ms(Oh)), title("States") graphr(c(white) lc(white)) aspect(1) xsize(5) ysize(5) legend(off) xtitle("hemoglobin in NFHS-4") ytitle("hemoglobin in NFHS-5")
-
-graph export "$repo_dir/figures/states_prevalence.png", replace
-
-restore
+gen severe = v457==1
+gen moderate = v457==2
+gen mild = v457==3
+gen not_anemic = v457==4
 
 
 
+*Matched cohorts
+gen hg4 = hg if v000=="IA6"
+gen hg5 = hg if v000=="IA7"
+
+gen cohort_no = .
+replace cohort_no = 1 if v013 == 1 & v000=="IA6" // 15-19
+replace cohort_no = 1 if v013 == 2 & v000=="IA7" // 20-24
+
+replace cohort_no = 2 if v013 == 2 & v000=="IA6" // 20-24
+replace cohort_no = 2 if v013 == 3 & v000=="IA7" // 25-29
+
+replace cohort_no = 3 if v013 == 3 & v000=="IA6" // 25-29
+replace cohort_no = 3 if v013 == 4 & v000=="IA7" // 30-34
+
+replace cohort_no = 4 if v013 == 4 & v000=="IA6" // 30-34
+replace cohort_no = 4 if v013 == 5 & v000=="IA7" // 35-39
+
+replace cohort_no = 5 if v013 == 5 & v000=="IA6" // 35-39
+replace cohort_no = 5 if v013 == 6 & v000=="IA7" // 40-44
+
+replace cohort_no = 6 if v013 == 6 & v000=="IA6" // 40-44
+replace cohort_no = 6 if v013 == 7 & v000=="IA7" // 45-49
 
 
-* get IMR district level for nfhs 4 and 5
+*Merge district level infant mortality
 merge m:1 sdist using "/Users/siddhantpandit/Desktop/NFHS/nfhs5_district_imr.dta"
 
 merge m:1 sdistri using "/Users/siddhantpandit/Desktop/NFHS/nfhs4_district_imr.dta", nogen
@@ -208,8 +205,137 @@ replace imr = inperiod_death4 if v000=="IA6"
 replace imr = inperiod_death5 if v000=="IA7"
 
 
+*************************************************************************
+* Decomposition
+*************************************************************************
+oaxaca hg v025 if district==2006, by(round5)
 
-* net hg and net canditate (quadrants graph)
+
+
+*************************************************************************
+* Summary statistics
+*************************************************************************
+
+*Table 1: anemia and severity distribution all india
+preserve
+
+collapse (mean) anemic severe moderate mild [aweight=wt], by(round5)
+
+list
+
+restore
+
+*Table 2: no. of districts with increasing anemia via different thresholds
+
+gen anemic11_10 = hg<11 if v213==0
+replace anemic11_10 = hg<10 if v213==1
+
+gen anemic10_9 = hg<10 if v213==0
+replace anemic10_9 = hg<9 if v213==1
+
+gen anemic9_8 = hg<9 if v213==0
+replace anemic9_8 = hg<8 if v213==1
+
+gen anemic8_7 = hg<8 if v213==0
+replace anemic8_7 = hg<7 if v213==1
+
+gen anemic7_6 = hg<7 if v213==0
+replace anemic7_6 = hg<6 if v213==1
+
+gen anemic_who = hg<12 if v213==0
+replace anemic_who = hg<11 if v213==1 & v214<=3
+replace anemic_who = hg<10.5 if v213==1 & v213<=6 & v213>3
+replace anemic_who = hg<11 if v213==1 & v213>6
+
+
+preserve
+
+collapse (mean) anemic anemic_who anemic11_10 anemic10_9 anemic9_8 anemic8_7 anemic7_6 [aweight=wt], by(district round5) 
+
+reshape wide anemic anemic_who anemic11_10 anemic10_9 anemic9_8 anemic8_7 anemic7_6, i(district) j(round5)
+
+gen diff_anemic = anemic1-anemic0
+gen diff_anemic_who = anemic_who1 - anemic_who0
+gen diff11_10 = anemic11_101-anemic11_100
+gen diff10_9 = anemic10_91-anemic10_90
+gen diff9_8 = anemic9_81-anemic9_80
+gen diff8_7 = anemic8_71-anemic8_70
+gen diff7_6 = anemic7_61-anemic7_60
+
+count if diff_anemic_who>0
+count if diff_anemic>0
+count if diff11_10>0
+count if diff10_9>0
+count if diff9_8>0
+count if diff8_7>0
+count if diff7_6>0
+
+restore
+
+
+*boxplots of sus districts
+
+gen combined = string(district) + "_" + string(round5)
+
+graph box hg if inlist(district, 2004, 2005, 2009, 2026, 2031, 2032, 2042), over(combined, gap(0))
+
+bysort district: sum severe0 severe1 if hg_increase==1&anemia_increase==1
+
+sum anemia_increase if hg1>hg0
+
+sum net_hg if hg_increase==1&anemia_increase==1
+
+graph box hg1 if hg_increase==1&anemia_increase==1, over(district)
+
+
+*************************************************************************
+* Graphs
+*************************************************************************
+
+
+* Histogram of hemoglobin measurements (layer NFHS-4 and NFHS-5) - takes forever to run
+
+preserve 
+
+
+keep if district==2035
+
+twoway (histogram hg if round5 == 0, color(blue%30) lcolor(blue) lwidth(medium)) /// 
+       || (histogram hg if round5 == 1, color(red%30) lcolor(red) lwidth(medium)), ///
+       legend(label(1 "NFHS-4 (Round 5 = 0)") label(2 "NFHS-5 (Round 5 = 1)")) ///
+       title("Layered Histograms of Hemoglobin Levels") ///
+       xlabel(, angle(45)) ///
+       ylabel(, angle(0)) ///
+       xtitle("Hemoglobin Levels (hg)") ///
+       ytitle("Frequency") ///
+       graphregion(color(white))
+
+	
+	
+	
+
+
+
+*Scatter hg4 hg5 on groups
+
+preserve
+gen candidate = district
+gen ones = 1
+keep if v213==0
+keep if v102==2
+// keep if v102==1 // rural only
+
+collapse (mean) hg (sum) ones [aweight=wt], by(candidate round5)
+reshape wide hg ones, i(candidate) j(round5)
+
+twoway (lfit hg0 hg0) (scatter hg1 hg0 [aweight=ones1], mlabel(candidate) ms(Oh)), title("Districts") graphr(c(white) lc(white)) aspect(1) xsize(5) ysize(5) legend(off) xtitle("hemoglobin in NFHS-4") ytitle("hemoglobin in NFHS-5")
+
+graph export "$repo_dir/figures/age_buckets.png", replace
+
+restore
+
+
+*Net hg and net canditate (quadrants graph)
 
 preserve
 
@@ -226,42 +352,30 @@ twoway (lfit net_hg net_candidate)(scatter net_hg net_candidate [aweight=ones1],
 
 graph export "$repo_dir/figures/haz_hg.png", replace
 
+restore
 
-* lpoly graph
 
-* generalize variable names
+*Lpoly graph
+*generalize variable names
 gen group = round5
 gen outcomevariable = hg 
 gen full = outcomevariable != . & group != . // This will be useful to define our maximum sample
 gen group1 = group == 1 & full == 1
 gen group0 = group == 0 & full == 1
 
-
-* for figure 1
 gen runningvariable = imr
 twoway (lpoly outcomevariable runningvariable if group == 1 [aweight=wt],  lc(navy) lw(medthick) ) (lpoly outcomevariable runningvariable if group == 0 [aweight=wt],  lc(forest_green) lw(medthick) lp(longdash)) if full == 1, legend(col(2) order(1 "nfhs-5" 0 "nfhs-4")) xtitle("infant mortality") ytitle("hemoglobin measurement g/dl") graphr(c(white) lc(white)) 
+
+sum runningvariable if full == 1 & inrange(runningvariable,1000,6000) [aw=wt], d //drop top and bottom 1%
 
 graph export "$repo_dir/figures/hg_imr_lpoly.png", replace
 
 
 
-
-
-graph save puzzlegraph1 "Graphfilename.gph", replace
-graph export "Graphfilename.pdf", as(pdf) replace
-
-* Nathan additions
-sum runningvariable if full == 1 & inrange(runningvariable,1000,6000) [aw=wt], d //drop top and bottom 1%
-
-
-
-
-
-* Create two separate variables for the conditions
+*Histograms of infant mortality
 gen imr_IA6 = imr if v000 == "IA6"
 gen imr_IA7 = imr if v000 == "IA7"
 
-* Overlay histograms with transparency
 twoway (histogram imr_IA6, fcolor(red%50) lcolor(red%50) lwidth(vvthin) bin(20)) ///
        (histogram imr_IA7, fcolor(blue%50) lcolor(blue%50) lwidth(vvthin) bin(20)), ///
        legend(order(1 "IA6" 2 "IA7")) ///
